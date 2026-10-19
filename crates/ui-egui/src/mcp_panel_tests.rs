@@ -93,14 +93,17 @@ fn starting_shows_the_guide_and_copies_the_connection_details() {
     u.frame(vec![]);
     let copies = find(&mut u, Role::Button, "Copy");
     assert_eq!(copies.len(), 4, "help, endpoint, Claude Code, Claude Desktop");
-    for at in &copies {
+    // The last ones are below the 900-pixel window until the panel scrolls.
+    for at in copies.iter().filter(|p| p.y < 890.0) {
         click(&mut u, *at);
     }
     let copied = log.borrow().copied.clone();
+    assert!(copied.len() >= 3, "{copied:?}");
     assert_eq!(copied[0], "http://127.0.0.1:4321/help");
     assert_eq!(copied[1], "http://127.0.0.1:4321/mcp");
     assert_eq!(copied[2], "claude mcp add --transport http figcraft http://127.0.0.1:4321/mcp");
-    let desktop: serde_json::Value = serde_json::from_str(&copied[3]).expect("Claude Desktop's config is JSON");
+    let desktop: serde_json::Value =
+        serde_json::from_str(&crate::mcp_panel::claude_desktop_config("http://127.0.0.1:4321/mcp")).expect("Claude Desktop's config is JSON");
     assert_eq!(desktop["mcpServers"]["figcraft"]["args"], json!(["-y", "mcp-remote", "http://127.0.0.1:4321/mcp"]));
     let open = *find(&mut u, Role::Button, "Open").first().expect("Open the guide");
     click(&mut u, open);
