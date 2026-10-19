@@ -1422,6 +1422,7 @@ dependencies = [
  "figcraft-collab-net",
  "figcraft-engine",
  "figcraft-format",
+ "figcraft-mcp",
  "figcraft-text",
  "figcraft-ui-egui",
  "fmv-macos-events",

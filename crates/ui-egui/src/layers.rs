@@ -95,8 +95,12 @@ pub fn rail(app: &mut FigApp, ui: &mut Ui) {
     y += 44.0;
     ui.painter().line_segment([pos2(r.min.x + 18.0, y), pos2(r.max.x - 18.0, y)], Stroke::new(1.0, t.border));
     y += 12.0;
-    let items =
-        [(Icon::Page, tr("File"), Some(LeftTab::File)), (Icon::Assets, tr("Assets"), Some(LeftTab::Assets)), (Icon::Styles, tr("Variables"), None)];
+    let items = [
+        (Icon::Page, tr("File"), Some(LeftTab::File)),
+        (Icon::Assets, tr("Assets"), Some(LeftTab::Assets)),
+        (Icon::Styles, tr("Variables"), None),
+        (Icon::Mcp, tr("MCP"), Some(LeftTab::Mcp)),
+    ];
     for (icon, label, tab) in items {
         let ir = Rect::from_center_size(pos2(r.center().x, y + 14.0), vec2(36.0, 28.0));
         let hit = Rect::from_min_max(pos2(r.min.x, y), pos2(r.max.x, y + 48.0));
@@ -141,10 +145,19 @@ pub fn left_panel(app: &mut FigApp, ui: &mut Ui) {
     }
     let t = Tokens::get(ui.ctx());
     let full = ui.max_rect();
-    // Header: file name (or "Assets") + drafts + collapse.
+    // Header: file name (or "Assets", "MCP server") + drafts + collapse.
     let (head, _) = ui.allocate_exact_size(vec2(full.width(), 64.0), Sense::hover());
     if app.ui.left_tab == LeftTab::Assets {
         ui.painter().text(pos2(head.min.x + 16.0, head.min.y + 24.0), Align2::LEFT_CENTER, tr("Assets"), semibold(13.0), t.text);
+    } else if app.ui.left_tab == LeftTab::Mcp {
+        ui.painter().text(pos2(head.min.x + 16.0, head.min.y + 24.0), Align2::LEFT_CENTER, tr("MCP server"), semibold(13.0), t.text);
+        ui.painter().text(
+            pos2(head.min.x + 16.0, head.min.y + 46.0),
+            Align2::LEFT_CENTER,
+            tr("Let AI agents design here"),
+            regular(11.0),
+            t.text_secondary,
+        );
     } else {
         let name = app.session.doc().map(|d| d.name.clone()).unwrap_or_default();
         let nr = Rect::from_min_max(pos2(head.min.x + 14.0, head.min.y + 14.0), pos2(head.max.x - 48.0, head.min.y + 34.0));
@@ -170,6 +183,7 @@ pub fn left_panel(app: &mut FigApp, ui: &mut Ui) {
             layers(app, ui);
         }
         LeftTab::Assets => crate::assets_panel::show(app, ui),
+        LeftTab::Mcp => crate::mcp_panel::show(app, ui),
     }
 }
 

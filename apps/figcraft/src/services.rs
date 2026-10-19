@@ -20,6 +20,8 @@ pub struct Desktop {
     language: Option<String>,
     /// Recovery copies of unsaved files (written at once after a panic).
     recovery: crate::recovery::Shared,
+    /// The MCP server the left sidebar's MCP panel starts (set once the control queue exists).
+    pub mcp: Option<crate::mcp_host::McpHost>,
 }
 
 pub fn config_dir() -> Option<PathBuf> {
@@ -54,7 +56,7 @@ impl Desktop {
         let reduce_motion = Arc::new(AtomicBool::new(false));
         let flag = reduce_motion.clone();
         std::thread::spawn(move || flag.store(system_reduce_motion(), Ordering::Relaxed));
-        Self { clipboard: arboard::Clipboard::new().ok(), dir, prefs, reduce_motion, language: system_language(), recovery }
+        Self { clipboard: arboard::Clipboard::new().ok(), dir, prefs, reduce_motion, language: system_language(), recovery, mcp: None }
     }
 }
 
@@ -329,6 +331,12 @@ impl Services for Desktop {
     }
     fn system_language(&self) -> Option<String> {
         self.language.clone()
+    }
+    fn mcp_server(&self) -> figcraft_ui_egui::McpServer {
+        self.mcp.as_ref().map_or(figcraft_ui_egui::McpServer::Unavailable, crate::mcp_host::McpHost::state)
+    }
+    fn set_mcp_server(&mut self, on: bool) -> figcraft_ui_egui::McpServer {
+        self.mcp.as_mut().map_or(figcraft_ui_egui::McpServer::Unavailable, |m| m.set(on))
     }
 }
 

@@ -186,6 +186,8 @@ icons! {
     LiveShared,
     /// A file of yours on a server that only you get into: a point inside a closed ring.
     LivePrivate,
+    /// The MCP server AI agents connect to: a plug with two prongs and its cable.
+    Mcp,
 }
 
 /// Points along a circular arc from angle `a0` to `a1` (radians, y down: increasing is clockwise).
@@ -946,6 +948,12 @@ fn draw(p: &P, icon: Icon) {
         LivePrivate => {
             p.dot(8.0, 8.0, 1.6);
             p.circle(8.0, 8.0, 5.0);
+        }
+        Mcp => {
+            p.line(6.0, 1.5, 6.0, 5.0);
+            p.line(10.0, 1.5, 10.0, 5.0);
+            p.path(&[(3.5, 5.0), (12.5, 5.0), (12.5, 8.0), (10.0, 11.0), (6.0, 11.0), (3.5, 8.0)], true);
+            p.line(8.0, 11.0, 8.0, 14.5);
         }
         Clock => {
             p.circle(7.5, 7.5, 5.5);

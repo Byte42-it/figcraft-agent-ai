@@ -23,6 +23,7 @@ mod gamepad;
 mod graphics;
 #[cfg(target_os = "linux")]
 mod linux_window;
+mod mcp_host;
 mod recovery;
 mod services;
 mod startup;
@@ -176,7 +177,10 @@ fn main() -> eframe::Result {
     let recovery_root = services::config_dir().map(|d| d.join("Recovery"));
     // The preferences first: they hold the online files a recovered document may be one of.
     let recovery = recovery::Shared::default();
-    let svc = services::Desktop::load(recovery.clone());
+    let mut svc = services::Desktop::load(recovery.clone());
+    // The control channel's queue: `--control` and the MCP panel's server both feed it.
+    let queue: Arc<Mutex<Vec<ControlRequest>>> = Arc::new(Mutex::new(Vec::new()));
+    svc.mcp = Some(mcp_host::McpHost::new(queue.clone(), ctx_slot.clone()));
     if let Some(prefs) = svc.prefs.clone() {
         session.prefs = prefs;
     }
@@ -211,7 +215,6 @@ fn main() -> eframe::Result {
     if let Some(link) = &args.join {
         figcraft_ui_egui::live::open_invite(&mut fig, link);
     }
-    let queue: Arc<Mutex<Vec<ControlRequest>>> = Arc::new(Mutex::new(Vec::new()));
     if let Some(p) = port {
         control_server::start(p, queue.clone(), ctx_slot.clone());
     }

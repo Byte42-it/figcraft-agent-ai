@@ -430,6 +430,13 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!("help.about", "About FigCraft", "{}", false, |s, _| ui(s, "dialog.about")),
         spec!("help.page", "Help page", "{}", false, |s, _| ui(s, "open.help")),
         spec!(
+            "help.mcpServer",
+            "MCP server",
+            "{}  the left sidebar's MCP panel, where the user starts the local server AI agents design through (no-op headless)",
+            false,
+            |s, _| ui(s, "panel.mcp")
+        ),
+        spec!(
             "help.gettingStarted",
             "Getting started",
             "{show? (default true; false closes them)}  the Getting started tips on the home screen: shows them again (the app opens the home screen), or closes them until asked for → {shown}",

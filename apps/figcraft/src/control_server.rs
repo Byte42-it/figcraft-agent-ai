@@ -9,13 +9,13 @@ use std::time::Duration;
 use figcraft_ui_egui::ControlRequest;
 use serde_json::{Value, json};
 
-type Queue = Arc<Mutex<Vec<ControlRequest>>>;
-type CtxSlot = Arc<Mutex<Option<egui::Context>>>;
+pub type Queue = Arc<Mutex<Vec<ControlRequest>>>;
+pub type CtxSlot = Arc<Mutex<Option<egui::Context>>>;
 
 const MAX_LINE: usize = 32 * 1024 * 1024;
 const MAX_CONNECTIONS: usize = 8;
 const MAX_QUEUED_REQUESTS: usize = 8;
-const TIMEOUT: Duration = Duration::from_secs(60);
+pub const TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Deferred requests for a hidden window must not make the UI's queue grow without a bound.
 pub fn drain_queue(queue: &Queue, target: &mut Vec<ControlRequest>) {
@@ -86,29 +86,9 @@ fn serve(mut out: TcpStream, queue: Queue, ctx: CtxSlot, timeout: Duration) -> s
                 let id = v.get("id").cloned().unwrap_or(Value::Null);
                 let method = v.get("method").and_then(Value::as_str).unwrap_or("").to_string();
                 let params = v.get("params").cloned().unwrap_or(json!({}));
-                let (tx, rx) = std::sync::mpsc::channel();
-                let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
-                let mut pending = queue.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-                pending.retain(|request| !request.is_cancelled());
-                if pending.len() >= MAX_QUEUED_REQUESTS {
-                    drop(pending);
-                    writeln!(out, "{}", json!({"id": id, "ok": false, "error": "control request queue is full"}))?;
-                    continue;
-                }
-                pending.push(ControlRequest { id: id.clone(), method, params, reply: tx, cancelled: cancelled.clone() });
-                drop(pending);
-                if let Some(c) = ctx.lock().unwrap_or_else(std::sync::PoisonError::into_inner).as_ref() {
-                    c.request_repaint();
-                }
-                match rx.recv_timeout(timeout) {
-                    Ok(r) => match r.result {
-                        Ok(res) => json!({"id": r.id, "ok": true, "result": res}),
-                        Err(e) => json!({"id": r.id, "ok": false, "error": e}),
-                    },
-                    Err(_) => {
-                        cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
-                        json!({"id": id, "ok": false, "error": "timed out waiting for the UI: screenshots and input need the FigCraft window on screen (is it minimised or covered?)"})
-                    }
+                match call(&queue, &ctx, id.clone(), method, params, timeout) {
+                    Ok(res) => json!({"id": id, "ok": true, "result": res}),
+                    Err(e) => json!({"id": id, "ok": false, "error": e}),
                 }
             }
             Err(e) => {
@@ -122,6 +102,30 @@ fn serve(mut out: TcpStream, queue: Queue, ctx: CtxSlot, timeout: Duration) -> s
         writeln!(out, "{reply}")?;
     }
     Ok(())
+}
+
+/// Queue one control method for the UI thread and wait for its answer (`Err`: the error message).
+/// The control channel and the in-app MCP server ([`crate::mcp_host`]) both come through here.
+pub fn call(queue: &Queue, ctx: &CtxSlot, id: Value, method: String, params: Value, timeout: Duration) -> Result<Value, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut pending = queue.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    pending.retain(|request| !request.is_cancelled());
+    if pending.len() >= MAX_QUEUED_REQUESTS {
+        return Err("control request queue is full".into());
+    }
+    pending.push(ControlRequest { id, method, params, reply: tx, cancelled: cancelled.clone() });
+    drop(pending);
+    if let Some(c) = ctx.lock().unwrap_or_else(std::sync::PoisonError::into_inner).as_ref() {
+        c.request_repaint();
+    }
+    match rx.recv_timeout(timeout) {
+        Ok(r) => r.result,
+        Err(_) => {
+            cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+            Err("timed out waiting for the UI: screenshots and input need the FigCraft window on screen (is it minimised or covered?)".into())
+        }
+    }
 }
 
 #[cfg(test)]

@@ -10,11 +10,14 @@
 //!   (`figcraft --control PORT`): one `{"id","method","params"}` line in, one
 //!   `{"id","ok","result"|"error"}` line out.
 //!
-//! Entry points: [`Server::serve`] (stdio loop) and [`Server::handle_line`] (one message).
+//! Entry points: [`Server::serve`] (stdio loop), [`Server::handle_line`] (one message) and
+//! [`HttpServer::start`] (MCP over HTTP on a loopback port, with the agent guide at `/help`).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod backend;
 mod headless;
+pub mod help;
+mod http;
 mod prompts;
 mod resources;
 mod server;
@@ -25,6 +28,7 @@ mod gradient_tests;
 
 pub use backend::{Attached, Backend, decode_data, page_children};
 pub use headless::Headless;
+pub use http::HttpServer;
 pub use prompts::{PROMPTS, PromptArg, PromptDef};
 pub use resources::{COMMAND_TEMPLATE, COMMANDS_URI, DOC_URI, NODE_TEMPLATE};
 pub use server::{INSTRUCTIONS, PROTOCOL_VERSION, SUPPORTED_VERSIONS, Server};

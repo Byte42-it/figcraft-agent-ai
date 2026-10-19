@@ -38,6 +38,7 @@ pub mod layout_panel;
 pub mod list_drag;
 pub mod live;
 pub mod live_text;
+pub mod mcp_panel;
 pub mod measure_overlay;
 pub mod menus;
 pub mod missing_fonts;
@@ -292,6 +293,30 @@ pub trait Services {
     fn gamepad_held(&mut self) -> u32 {
         0
     }
+    /// The local MCP server AI agents design through (the left sidebar's MCP panel): its state
+    /// now. Platforms without one (the browser, tests) say [`McpServer::Unavailable`].
+    fn mcp_server(&self) -> McpServer {
+        McpServer::Unavailable
+    }
+    /// Start (`true`) or stop the MCP server; returns its new state.
+    fn set_mcp_server(&mut self, _on: bool) -> McpServer {
+        McpServer::Unavailable
+    }
+}
+
+/// The local MCP server's state ([`Services::mcp_server`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum McpServer {
+    /// This platform can't run one (the browser).
+    Unavailable,
+    Stopped,
+    /// Listening on `http://127.0.0.1:{port}`; `requests` MCP messages answered so far.
+    Running {
+        port: u16,
+        requests: usize,
+    },
+    /// It couldn't start: why.
+    Failed(String),
 }
 
 pub type DialogFuture = Pin<Box<dyn Future<Output = Option<PathBuf>>>>;
@@ -401,6 +426,8 @@ pub enum RightTab {
 pub enum LeftTab {
     File,
     Assets,
+    /// The MCP server AI agents connect to.
+    Mcp,
 }
 
 /// The window's title bar.
@@ -968,6 +995,11 @@ impl FigApp {
                 }
                 "focus.region" => self.ui.nav.step(r.data.get("step").and_then(Value::as_i64).unwrap_or(1).clamp(-4, 4) as i32),
                 "panel.layers" => self.ui.left_tab = LeftTab::File,
+                "panel.mcp" => {
+                    self.ui.left_tab = LeftTab::Mcp;
+                    self.ui.left_collapsed = false;
+                    self.ui.versions = Default::default();
+                }
                 "panel.assets" => {
                     self.ui.left_tab = LeftTab::Assets;
                     self.ui.left_collapsed = false;
@@ -1584,6 +1616,7 @@ impl FigApp {
                         _ if self.ui.versions.open => i18n::tr("Version history"),
                         LeftTab::File => i18n::tr("Layers"),
                         LeftTab::Assets => i18n::tr("Assets"),
+                        LeftTab::Mcp => i18n::tr("MCP server"),
                     };
                     a11y::region(&mut self.ui.nav, ui, a11y::Region::Layers, egui::accesskit::Role::Pane, label);
                     layers::left_panel(self, ui)

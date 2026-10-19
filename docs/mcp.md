@@ -99,6 +99,26 @@ built-in fonts. Attached, the app's own fonts apply. The browser build has no sy
 
 ## Configure a client
 
+The quickest way: in the desktop app, open the **MCP** button in the left sidebar (or Help ▸ MCP
+server) and press **Start server**. FigCraft then serves MCP over HTTP on a free loopback port,
+answered by the open window (what `--attach` does, without starting anything else):
+
+| Path | What |
+|---|---|
+| `POST /mcp` | MCP Streamable HTTP (`2025-06-18`): one JSON-RPC message per request, the reply as `application/json`; notifications get `202`. No event streams (`GET /mcp` is 405) and no sessions: every client drives the same window, one request at a time. |
+| `GET /help` | A Markdown guide for agents: how to connect Claude Code, Claude Desktop and other clients, the conventions, recipes, every tool and prompt (built from the same definitions the server answers with). |
+| `GET /tools`, `GET /health` | The tool schemas; a status line. |
+
+It listens on 127.0.0.1 only and refuses requests whose `Host` isn't `127.0.0.1`, `localhost` or
+`[::1]` with its port, and any `Origin` other than those (a web page can't drive it). The panel
+shows the address, a request count and copy buttons for the endpoint, the guide, the Claude Code
+command (`claude mcp add --transport http figcraft http://127.0.0.1:PORT/mcp`) and Claude
+Desktop's config (`npx -y mcp-remote http://127.0.0.1:PORT/mcp`). Started again in the same run, it
+takes the same port when it is free. The transport is `figcraft_mcp::HttpServer`
+(`crates/mcp/src/http.rs`).
+
+### Command-line servers
+
 Build the CLI first (`cargo build --release -p figcraft-cli`) and use the absolute path to
 `target/release/figcraft-cli`.
 
